@@ -154,9 +154,9 @@ repository's \file{README.md}, in your first commit.
 
 Fork the team repository on GitHub (``Fork'' button), then:
 \begin{shell}
-git clone git@github.com:<you>/<team-repo>.git
-cd <team-repo>
-git remote add upstream git@github.com:<organisers>/<team-repo>.git
+git clone git@github.com:<you>/sw_tutorial_2026.git
+cd sw_tutorial_2026
+git remote add upstream git@github.com:matclim/sw_tutorial_2026.git
 cp <wherever-it-is>/mystery.root .          # data: not under version control
 pixi cvmfs analysis                         # stops at task 1 for now
 pixi cvmfs check                            # 10 not written yet, 0 failed
@@ -277,7 +277,9 @@ is a separate pull request.
 \section{Setting it up}
 \label{sec:teamsetup}
 
-The team repository is \tbd{URL of the team repository}. It starts from the
+The team repository is
+\href{https://github.com/matclim/sw_tutorial_2026}{\file{github.com/matclim/sw\_tutorial\_2026}}.
+It starts from the
 files in \file{code/teamwork/template/}: the skeleton
 \file{mystery\_analysis.py}, the checker \file{check\_task.py}, the pixi
 manifest \file{pixi.toml} with its lock file, the lint settings

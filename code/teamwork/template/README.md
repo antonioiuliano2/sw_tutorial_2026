@@ -39,9 +39,9 @@ on lxplus, which install the environment into `.pixi/` on AFS.
 
 ```bash
 # 1. fork this repository on GitHub, then clone YOUR fork
-git clone git@github.com:<you>/<this-repository>.git
-cd <this-repository>
-git remote add upstream git@github.com:<organisers>/<this-repository>.git
+git clone git@github.com:<you>/sw_tutorial_2026.git
+cd sw_tutorial_2026
+git remote add upstream git@github.com:matclim/sw_tutorial_2026.git
 cp <wherever-it-is>/mystery.root . # data: not under version control
 
 # 2. one branch for your task
