@@ -1,0 +1,210 @@
+\chapter{Analysis: muons in the detector}
+\label{ch:analysis}
+
+\chaptergoals{10 of 11 in Part~II.}
+{\cref{ch:production,ch:aegir,ch:digitisation}: the three files; the Python of
+\cref{ch:team}.}
+{find out which detectors the muons reach, with honest uncertainties, see
+what the field does to them, and separate the two charges in the
+spectrometer.}
+
+There is no analysis framework to learn in this chapter. The files are
+RNTuples of plain structs, so a Python script with PyROOT can read them
+directly, and that is what we do.
+
+\section{Reading the files}
+
+The pattern from \cref{ex:openfile} is all you need: open a reader on the
+RNTuple, create a typed \emph{view} per field, and call the view with an entry
+number to get that entry's value as a C++ object. The scripts in
+\file{code/analysis/} share a few small helpers in \file{shipfiles.py}: a
+class that keeps readers and views together, the detector numbering, the
+positions of the decay volume and the straw stations, and the normalisation
+to protons on target.
+
+\codefile[linerange={48-99},basicstyle=\ttfamily\footnotesize]{Python}{code/analysis/shipfiles.py}
+
+\begin{pitfall}
+Two habits of PyROOT with RNTuples are built into these helpers. A view
+returns a reference into its own buffer, which the next call overwrites: copy
+out what you need before reading the next entry. And tearing down readers
+when Python exits can crash; the scripts therefore keep every reader alive and
+leave through \texttt{os.\_exit} after flushing their output
+(\texttt{sf.finish()}).
+\end{pitfall}
+
+\section{Which file for which question}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{X l}
+\toprule
+Question & File \\
+\midrule
+what leaves the hadron absorber, per proton & production (\cref{ch:production}) \\
+per muon: which detectors did it reach & muon sample (\cref{ch:aegir}) \\
+per event: which detectors saw anything & muon sample \\
+detector response over all hits: resolutions, times & digitisation \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The reason for the split is the shape of \pkg{Shannon}'s output
+(\cref{sec:digilayout}): a stream of time-stamped hits, as the detector will
+deliver, with no simulated-event number. Questions about one simulated event
+or one muon are therefore answered from the simulation file, using simulated
+hits as a stand-in for digitised ones. For counting which detectors were hit,
+the position smearing does not matter; it would for reconstructed tracks,
+timing or a realistic detector response.
+
+\section{Fractions, not rates}
+
+The muon sample of \cref{ch:aegir} is artificial: 100 muons of one charge,
+flat in momentum, from one point at the back of the shield. What it can tell
+you is what \emph{fraction} of such muons reaches each detector, not how many
+muons per proton or per spill SHiP will see. Rates per proton come from the
+plane of \cref{ch:production} or from a replay of a real production
+(\cref{ex:ownreplay}); \file{muon\_background.py} normalises to protons only
+when you give it \cmd{--pot}.
+
+\begin{pitfall}
+A fraction $f$ measured on $N$ muons has a binomial uncertainty
+$\sqrt{f(1-f)/N}$: up to 5\,\% for $N=100$. Zero muons out of 100 means a
+fraction below about 3\,\% (at 95\,\% confidence), not zero. Quote it that
+way, and simulate more muons before reading anything into a small difference.
+\end{pitfall}
+
+\section{Where the muons end up}
+
+\file{code/analysis/muon\_background.py} looks at every primary muon (a
+\texttt{SimParticle} with \field{parent\_id}~$=0$ and $|\field{pdg\_code}|=13$)
+and finds the detectors in which \emph{the muon itself} left hits, and the
+straw stations it crossed. Separately, it counts the events with any hit in
+each detector, whoever made it: a muon that only passes close to a detector
+can still send secondaries into it.
+
+\begin{exercise}{Run the analysis}
+\label{ex:muonbackground}
+In the \pkg{aegir} environment, in \file{work/}:
+\begin{shell}
+python $CODE/analysis/muon_background.py muon_gun.root
+\end{shell}
+It prints two tables and writes three PDFs (\file{muon\_background\_*.pdf}).
+\begin{enumerate}
+  \item What fraction of the muons reaches the UBT, the straws, all four
+        straw stations, the timing detector and the calorimeter? Give each
+        with its uncertainty.
+  \item Which muons do not cross all four stations?
+  \item Compare the two tables: why can an event have hits in a detector
+        that its muon did not reach?
+  \item \file{\_p.pdf}: does the fraction reaching the straws depend on the
+        momentum?
+  \item \file{\_station1\_xy.pdf}: how large is the spot of the muons in
+        the first straw station, and does that agree with 20\,mrad over the
+        distance from $z=27$\,m?
+\end{enumerate}
+\end{exercise}
+
+\begin{checkpoint}
+Two tables whose first line counts 100 primary muons, with a
+\texttt{fraction} column, and three PDFs.
+\end{checkpoint}
+
+\begin{solution}
+\begin{enumerate}
+  \item Nearly all: at 20\,mrad or less the muons stay inside the decay
+        volume. In the dry run, 100\,\% reached the UBT, 97\,\% the straws,
+        95\,\% all four stations, the timing detector and the calorimeter,
+        each $\pm2\,\%$, and 5\,\% the SBT ($\pm2\,\%$).
+  \item The ones at the largest angles, which leave the acceptance before the
+        last stations or cross the vessel wall into the SBT. Compare
+        the 5\,\% that miss a station with the 5\,\% in the SBT: check in the
+        script whether they are the same muons.
+  \item Secondaries: a $\delta$-ray, a photon from bremsstrahlung or a hadron
+        from a muon-nucleus interaction reaches a detector the muon itself
+        misses. Such hits are why a veto has to be studied with the full
+        detector simulation, not with the muon trajectories alone.
+  \item Hardly, above a few GeV: the muons are too hard to be stopped, and
+        the field of the magnet moves the soft ones by centimetres to
+        decimetres only.
+  \item At most $0.02\times(84.07-27)\,\mathrm{m}\approx1.1$\,m from the
+        axis, and uniform in angle, so denser towards the centre.
+\end{enumerate}
+\end{solution}
+
+\section{What the field does}
+
+The spectrometer magnet between straw stations 2 and 3 bends the muons in the
+horizontal plane; the muon shield, behind which the gun starts, no longer acts
+on them. The sample without field (\cref{ex:nofield}) shows the difference.
+
+\begin{exercise}{Field on, field off}
+If you made \file{muon\_gun\_nofield.root}, run the analysis on it too:
+\begin{shell}
+python $CODE/analysis/muon_background.py muon_gun_nofield.root \
+    --output nofield
+\end{shell}
+Compare the two muon tables. Do the fractions change, within their
+uncertainties? Compare \file{muon\_background\_station1\_xy.pdf} with
+\file{nofield\_station1\_xy.pdf}: why do they look alike?
+\end{exercise}
+
+\begin{solution}
+The fractions agree within their uncertainties: the field changes where a
+muon crosses stations 3 and 4 by centimetres to decimetres, small compared
+with the size of the detectors. Station~1 is upstream of the magnet, so its
+hit maps differ only by Geant4's randomness. The field does not decide
+\emph{whether} a muon is seen; it decides where, which is what measures its
+momentum and charge. \tbd{the two tables of the dry run}
+\end{solution}
+
+\begin{exercise}[colback=white]{Optional: the two charges}
+With the $\mu^+$ sample of \cref{ex:mup}: for every muon that crosses all
+four straw stations, take the mean $x$ and $z$ of its hits in each station
+and compute the change of its slope in $x$ across the magnet,
+$\Delta\theta_x = \frac{x_4-x_3}{z_4-z_3} - \frac{x_2-x_1}{z_2-z_1}$.
+Histogram it separately for $\mu^+$ and $\mu^-$. Do the two charges go to
+opposite sides? Repeat on the sample without field.
+\end{exercise}
+
+\begin{solution}
+A solution is \file{code/analysis/solutions/spectrometer\_charge.py}:
+\begin{shell}
+python $CODE/analysis/solutions/spectrometer_charge.py \
+    muon_gun.root muon_gun_mup.root
+python $CODE/analysis/solutions/spectrometer_charge.py \
+    muon_gun_nofield.root --output nofield
+\end{shell}
+With field the two distributions lie on opposite sides of zero, and the kink
+falls with momentum as $\Delta\theta_x \approx 0.3\int B\,\mathrm{d}l / p$
+(\cref{ch:services}), so the soft muons give the largest kinks. Without field
+the distribution is centred on zero, with the width that multiple scattering
+gives.
+\end{solution}
+
+\section{Going further}
+
+\begin{exercise}[colback=white]{Optional: from a hit stream back to events}
+Using the digitised file, histogram the times of all SBT hits. Could you
+separate the simulated events by time? What would the digitisation have to
+record so that a Monte Carlo study can connect digitised hits to the
+simulated event they came from? Bring your answer to the closing discussion.
+\end{exercise}
+
+\begin{exercise}[colback=white]{Optional: more muons}
+Simulate 1000 muons with another seed and another \texttt{output} name
+(\cmd{--tla-code events=1000 --tla-code seed=2}) and run the analysis on
+them. How do the fractions and their uncertainties change? How many protons
+on target would it take to get 1000 muons behind the shield from the real
+production of \cref{ch:production}?
+\end{exercise}
+
+\begin{solution}
+The fractions agree with the 100-muon sample within its uncertainties, and
+the uncertainties shrink by $\sqrt{10}$. For the protons: the muons per proton
+at the plane from \cref{ex:planesummary}, times the fraction that gets
+through the shield (\cref{ex:ownreplay}), gives the muons behind the shield
+per proton; 1000 divided by it is the number of protons, which is why SHiP's
+background studies use dedicated large productions, with event weights and
+biasing.
+\end{solution}

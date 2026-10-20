@@ -1,0 +1,174 @@
+\chapter{Setting up the SHiP software}
+\label{ch:setup}
+
+\chaptergoals{1 of 11 in Part~II.}
+{Part~I, in particular \cref{ch:pixi} (\cmd{pixi cvmfs} on lxplus).}
+{install the SHiP software chain, check that it works, and have the field maps at hand.}
+
+\begin{organisernote}
+This chapter is a skeleton for the setup introduction given at the start of
+the tutorial. Replace the \tbd{} items once the tutorial environment is
+frozen. Whatever the final recipe, participants must leave this chapter with
+\emph{one} environment in which \cmd{phlex}, \cmd{jsonnet}, the \pkg{aegir},
+\pkg{Shannon} and \pkg{sea-cucumber} plugins and executables and PyROOT all
+work, and with the tutorial input files on disk. The geometry chapter has its
+own small workspace (\file{code/geometry}), which installs separately.
+\end{organisernote}
+
+\section{What you need}
+
+\begin{itemize}
+  \item An lxplus account. Everything in this booklet runs on lxplus.
+  \item pixi from CVMFS, set up as in \cref{ex:pixicvmfs}. It provides every
+        package, compilers included, and keeps the environments out of your
+        AFS area: in the packages' checkouts, use \cmd{pixi cvmfs}, never
+        \cmd{pixi run} or \cmd{pixi install}.
+  \item Room in your AFS home for the checkouts and their \file{build/}
+        directories, about 0.5\,GB (\cmd{fs lq \textasciitilde}).
+  \item An X11 connection for the windows of \cref{ch:geometry}
+        (\cmd{ssh -Y lxplus.cern.ch}), and a web browser on your own machine for
+        the \pkg{sea-cucumber} web display (\cref{ch:display}).
+\end{itemize}
+
+\section{Where the software comes from}
+
+Released components of the new stack are distributed as conda packages on the
+\href{https://prefix.dev/channels/ship-experiment}{\file{prefix.dev/ship-experiment/stable}}
+channel; other dependencies are resolved from \texttt{conda-forge}. The recipes are in \repo{ship-conda-recipes}. Each
+repository carries a \file{pixi.toml} that pins its dependencies and a
+\file{pixi.lock} that freezes the exact versions, so the same committed lock file can reproduce a resolved environment.
+Use the tutor-provided revision and lock file; cloning moving branches does
+not freeze the software.
+
+\begin{note}
+As in \cref{ch:pixi}, two commands do almost everything:
+\begin{description}[style=nextline]
+  \item[\cmd{pixi cvmfs <task or command>}] runs one command inside the
+    environment, e.g.\ \cmd{pixi cvmfs build} or \cmd{pixi cvmfs phlex -c \ldots}.
+  \item[\cmd{pixi cvmfs}] opens a shell with the environment active until you
+    \cmd{exit}. This is the convenient mode for this tutorial.
+\end{description}
+\end{note}
+
+\section{The tutorial environment}
+
+\tbd{Final recipe. Either a single tutorial \file{pixi.toml} pulling in all
+packages at the versions in \cref{tab:versions}, or the per-repository
+checkouts below.}
+
+If you work with the individual repositories, check them out side by side;
+the SHiP developer guide calls this the \emph{sibling layout}, and some
+configuration files refer to each other by relative path:
+
+\begin{shell}
+cd "$SHIP_TUTORIAL"
+for r in Geometry aegir Shannon sea-cucumber field_maps; do
+  git clone https://github.com/ShipSoft/$r.git
+done
+(cd Geometry && pixi cvmfs geometry)   # builds the detector description
+(cd aegir    && pixi cvmfs build)      # builds the simulation plugins
+(cd Shannon  && pixi cvmfs build)      # builds the digitisation plugins
+(cd sea-cucumber && pixi cvmfs build) # builds the event display
+(cd field_maps && pixi cvmfs build)   # downloads and converts the field maps
+cp Geometry/build/ship_geometry.db field_maps/build/share/field/*.root work/
+\end{shell}
+
+Inside \pkg{aegir} and \pkg{Shannon}, the pixi activation script
+(\file{activate.sh}) sets the environment variables the framework needs:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{>{\ttfamily}lX}
+\toprule
+\normalfont\bfseries Variable & \bfseries Meaning \\
+\midrule
+PHLEX\_PLUGIN\_PATH & where \cmd{phlex} looks for plugins: the package's
+  \file{build/} directory, then the environment's \file{lib/} \\
+SHIPGEOMETRY\_ROOT & a bare geometry file name such as
+  \file{ship\_geometry.db} is looked up in the current directory, then in
+  \file{\$SHIPGEOMETRY\_ROOT/share/geometry/} \\
+SHIPFIELD\_ROOT & a bare field-map file name is looked up in
+  \file{\$SHIPFIELD\_ROOT/share/field/} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Versions used in this booklet}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+Package & conda package & Version \\
+\midrule
+\pkg{Geometry}         & \texttt{shipgeometry}         & main with PRs \#116 and \#102 \\
+\pkg{geometry service} & \texttt{shipgeometryservice}  & 0.6.x \\
+\pkg{field service}    & \texttt{field-service}        & 0.4.x \\
+\pkg{data model}       & \texttt{shipdatamodel}        & 0.6.x \\
+\pkg{ship-random}      & \texttt{ship-random}          & 0.4.x \\
+\pkg{aegir}            & \texttt{aegir}                & 0.5.0 or later \\
+\pkg{Shannon}          & \texttt{shannon}              & 0.5.0 or later \\
+\pkg{sea-cucumber}     & (built from source)           & main after PR \#42 \\
+Phlex                  & \texttt{phlex}                & $\geq 0.4.1$ \\
+\bottomrule
+\end{tabular}
+\caption{Target version constraints and values still to freeze. This is not a tested environment manifest.}
+\label{tab:versions}
+\end{table}
+
+\begin{pitfall}
+The data model is at the centre of a version chain: \pkg{aegir} writes it,
+\pkg{Shannon}, \pkg{sea-cucumber} and \pkg{Trout} read it, and your analysis
+reads it too. \texttt{shipdatamodel} 0.6 renamed the camelCase members to
+snake\_case, for example \field{pdgCode} to \field{pdg\_code}. This booklet
+uses the 0.6 names, which is what the whole chain is built against now.
+\Cref{app:datamodel} lists both spellings. If a script fails with an
+unknown member, check which data-model version your environment has before
+anything else.
+\end{pitfall}
+
+\begin{organisernote}
+As checked on 20 October 2026: \pkg{aegir} main (0.5.0) requires
+\texttt{shipdatamodel >=0.6}, \pkg{field\_service} 0.4 and
+\pkg{geometry\_service} 0.6; \pkg{Shannon} 0.5.0 and \pkg{Trout} require
+\texttt{>=0.6}. \pkg{sea-cucumber} is on 0.6 since its pull request \#42
+(merged 20 October 2026). \repo{Geometry} main includes pull
+request \#101 (compile-time consistency checks), which changes no volume or
+position; its \cmd{build\_geometry} takes the output file with \cmd{-o},
+unlike the released 0.2.1. The booklet also assumes pull requests \#116
+(registry follow-ups, removes \texttt{SHiPUBTManager}) and \#102 (the
+\texttt{SHiP::geometry} namespace, \texttt{DetectorBuilder} and
+\texttt{Materials}, with deprecated aliases for the old names) merged;
+neither changes a volume name, position, task or \cmd{build\_geometry}
+option.
+Freeze all revisions for the tutorial and fill in \cref{tab:versions}.
+\end{organisernote}
+
+\section{Tutorial input files}
+
+Everything in Part~II is produced from scratch: the geometry in
+\cref{ch:geometry}, the proton collisions in \cref{ch:production}, and every
+file after them. The only input you do not make yourself is the pair of
+\textbf{field maps} for the muon shield and the spectrometer magnet, in the
+SHiP field-map format (\cref{sec:fieldservice}). The \repo{field\_maps}
+checkout above downloads FairShip's maps and converts them (about two
+minutes); after the \cmd{cp}, \file{work/} holds
+\file{ship\_geometry.db}, \file{muon\_shield\_TRY\_2026.root} and
+\file{spectrometer\_V21\_2455.root}.
+
+\begin{exercise}{Check your environment}
+From the \file{aegir} directory, open a shell in the environment and check
+that the tools respond:
+\begin{shell}
+pixi cvmfs
+which phlex jsonnet
+echo $PHLEX_PLUGIN_PATH
+python -c "import ROOT; print(ROOT.gROOT.GetVersion())"
+\end{shell}
+\end{exercise}
+
+\begin{checkpoint}
+Paths for Phlex and Jsonnet inside the pixi environment, a plugin path that starts with the
+\file{aegir/build} directory, and a ROOT version satisfying the frozen environment (aegir currently requires
+6.40 or later). Looking at the geometry (\cref{ch:geometry}) uses its own
+small pixi workspace and a graphical session.
+\end{checkpoint}

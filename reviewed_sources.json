@@ -1,0 +1,61 @@
+{
+  "review_date": "2026-10-20",
+  "method": "GitHub main snapshots (and the named pull-request heads) fetched and inspected; workflows evaluated with jsonnet and compared with aegir's; not an integration build",
+  "sources": [
+    {
+      "repo": "Geometry",
+      "sha": "ae6957dc46c6b5836cab88f859d4cbfbd59ca1ee",
+      "date": "2026-10-20T22:06:25+02:00"
+    },
+    {
+      "repo": "aegir",
+      "sha": "a65eed53d03ce14b68df49d3f922c04c283367d3",
+      "date": "2026-10-20T14:12:47+00:00"
+    },
+    {
+      "repo": "data-model",
+      "sha": "ba0dda8bb4b43b9d2a2ded3ede57bdb519ae8d12",
+      "date": "2026-10-17T22:33:32+02:00"
+    },
+    {
+      "repo": "field_service",
+      "sha": "2adf7fa5c37f5b43c417d009fad56e1422770358",
+      "date": "2026-10-17T22:32:09+02:00"
+    },
+    {
+      "repo": "geometry_service",
+      "sha": "8e6792570fad3dce7349aeb992e734f860b1356f",
+      "date": "2026-10-20T01:42:59+02:00"
+    },
+    {
+      "repo": "Shannon",
+      "sha": "7d9f89a47a09c6865124e532c49ef9206661da57",
+      "date": "2026-10-20T03:44:58+02:00"
+    },
+    {
+      "repo": "sea-cucumber",
+      "sha": "640f80cda2104951abd9d3a9781c11fa12eeadce",
+      "date": "2026-10-13T21:10:48+02:00"
+    },
+    {
+      "repo": "Trout",
+      "sha": "d397c33d38108e7beaf4e32d9c46b7151200e886",
+      "date": "2026-10-20T11:47:10+02:00"
+    },
+    {
+      "repo": ".github",
+      "sha": "141170c66caa785af6b5cf30551359dc47e994c1",
+      "date": "2026-10-18T20:02:43+02:00"
+    },
+    {
+      "repo": "Geometry#116",
+      "sha": "ea270cbfd888cc1f054befee7bbf8abf7566bd07",
+      "date": "2026-10-20T19:01:39+02:00"
+    },
+    {
+      "repo": "Geometry#102",
+      "sha": "a8bf002099508301af6372c09b255bdb58160bc5",
+      "date": "2026-10-20T21:41:31+02:00"
+    }
+  ]
+}

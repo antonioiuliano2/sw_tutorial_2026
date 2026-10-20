@@ -1,0 +1,92 @@
+\chapter{Review scope and source revisions}
+\label{app:review}
+
+This review checks the booklet against public repository source snapshots
+retrieved on 20 October 2026, and against the pull requests the booklet
+assumes merged: \repo{Geometry} \#116 and \#102. \repo{sea-cucumber} \#42
+was reviewed at its head and has since been merged. The revisions below identify the reviewed code; they are
+\emph{not} a jointly tested software release. The whole chain is on data
+model 0.6.
+
+\section{Checked primary sources}
+
+The revision links open the exact source trees used for the review.
+\begin{center}\small
+\begin{tabularx}{\linewidth}{l l L}
+\toprule Repository & Revision & Main checks \\ \midrule
+Geometry & \href{https://github.com/ShipSoft/Geometry/tree/ae6957dc46c6b5836cab88f859d4cbfbd59ca1ee}{\texttt{ae6957dc46}} & main, including PR \#101, and the heads of PRs \#116 (\texttt{ea270cb}) and \#102 (\texttt{a8bf002}): coordinates, volume names, envelopes, tasks, \cmd{build\_geometry} options, class names \\
+aegir & \href{https://github.com/ShipSoft/aegir/tree/a65eed53d03ce14b68df49d3f922c04c283367d3}{\texttt{a65eed53d0}} & fixed-target source, scoring planes, plane replay, sensitive-volume entries, output fields \\
+data-model & \href{https://github.com/ShipSoft/data-model/tree/ba0dda8bb4b43b9d2a2ded3ede57bdb519ae8d12}{\texttt{ba0dda8bb4}} & 0.6 member names, detector ids, backward-read exceptions \\
+field\_service & \href{https://github.com/ShipSoft/field_service/tree/2adf7fa5c37f5b43c417d009fad56e1422770358}{\texttt{2adf7fa5c3}} & map format, tools and their options \\
+geometry\_service & \href{https://github.com/ShipSoft/geometry_service/tree/8e6792570fad3dce7349aeb992e734f860b1356f}{\texttt{8e6792570f}} & 0.6 interface, namespace, CMake target \\
+Shannon & \href{https://github.com/ShipSoft/Shannon/tree/7d9f89a47a09c6865124e532c49ef9206661da57}{\texttt{7d9f89a47a}} & input layout, \texttt{pot}, smearing and per-object output \\
+sea-cucumber & \href{https://github.com/ShipSoft/sea-cucumber/tree/640f80cda2104951abd9d3a9781c11fa12eeadce}{\texttt{640f80cda2}} & PR \#42 head: tasks, options, view rules, data model 0.6 \\
+Trout & \href{https://github.com/ShipSoft/Trout/tree/d397c33d38108e7beaf4e32d9c46b7151200e886}{\texttt{d397c33d38}} & hit-stream input and reconstruction scope \\
+.github & \href{https://github.com/ShipSoft/.github/tree/141170c66caa785af6b5cf30551359dc47e994c1}{\texttt{141170c66c}} & branch rulesets, merge methods and required checks (\cref{sec:pullrequests}) \\
+\bottomrule\end{tabularx}\end{center}
+
+Particularly relevant files are \file{aegir/workflows/lib.libsonnet} and
+\file{fixed\_target\_production.jsonnet} and \file{plane\_replay.jsonnet}
+(which the booklet's two simulation workflows reproduce),
+\file{aegir/src/sensitive\_volumes.hpp} (the detector of each pattern),
+\file{aegir/docs/geant4\_integration.md} (scoring planes and SD modes),
+\file{Shannon/src/digitise\_hits.cpp} (time window and random streams) and
+\file{data-model/tests/data/README.md} (schema migration exceptions). Full
+commit IDs are in \file{reviewed\_sources.json}; the accompanying
+\file{REVIEW.md} records changes and validation limits.
+
+\section{Before the tutorial session}
+
+\begin{enumerate}
+\item Freeze compatible package revisions and lock files. Verify all packages
+on lxplus with \cmd{pixi cvmfs}: \file{tools/dry\_run.sh} in the organiser
+archive runs Part~II end to end and collects timings, disk use and the
+numbers the \textbf{TBD} items need.
+\item Provide the field maps, their names and coordinate placements. Check
+the maps against the exact geometry database used by all consumers.
+\item Time stage~1 and choose the number of protons per participant; produce
+a larger sample with the same workflow for the analysis.
+\item Run the full chain on lxplus, verify schema readback in each
+environment, and replace the remaining \textbf{TBD} values with measured
+results (including runtime and disk requirements).
+\end{enumerate}
+
+\section{Accessibility and validation}
+
+The booklet uses dark blue and neutral tones on white, with dark text and
+light box backgrounds. Box titles state their meaning; arrows distinguish
+data, services and the future branch by solid, dashed and dotted strokes.
+No task or warning requires distinguishing hues. The supplied black SHiP
+logo is included without recolouring. Analysis plots use a high-contrast
+single-series line; Gaussian fits additionally use a black dashed line.
+This supports greyscale use and avoids dependence on red--green perception;
+it is not a claim of formal PDF accessibility certification.
+
+Both editions are compiled and visually checked. The analysis scripts are
+run in \file{tests/test\_analysis\_helpers.py} against synthetic events with
+the data-model 0.6 member names and a stand-in for ROOT. The four workflows
+are evaluated with \cmd{jsonnet} in \file{tests/test\_workflows.py}: the
+production workflow expands to the same job as \pkg{aegir}'s
+\file{fixed\_target\_production.jsonnet}, the replay to \pkg{aegir}'s
+\file{plane\_replay.jsonnet} plus the detectors, the field and
+energy-deposit hits, the muon gun has the same detectors and field as the
+replay, and every volume pattern is checked against the
+\repo{Geometry} sources. No Geant4, digitisation or display run is claimed:
+the review environment has no SHiP packages, field maps or CVMFS.
+
+For Part~I, the script \file{tests/test\_git\_workflow.sh} runs every git
+command sequence of \cref{ch:git,ch:branches,ch:remotes,ch:team} against local bare repositories standing
+in for GitHub (forks, an out-of-date pull request, a rebase with and without
+conflict, a rebase-only merge queue). The team exercise (skeleton, per-task
+checker, sample generator and reference solutions) runs end to end in
+\file{tests/test\_teamwork.py} against a numerical stand-in for PyROOT
+(\file{tests/fakeroot/}); it has not yet been run with real ROOT. The pixi manifests and the task,
+feature and environment commands of \cref{ch:pixi} were checked with
+pixi~0.72.0 (the version on CVMFS) and 0.82 on workspaces without packages (the package channels were not reachable from
+the review environment, so no environment was solved and no lock file for the
+team repository exists yet). \cmd{pixi cvmfs} exists only on CVMFS and has
+not been run: the booklet assumes that \cmd{pixi cvmfs <task or command>}
+works as \cmd{pixi run} does in any workspace, and that bare \cmd{pixi cvmfs}
+opens a shell, as in FairShip. Both workflows of \cref{ch:ci} pass actionlint
+1.7.12, and all tutorial Python passes the ruff configuration CI uses. None of
+the workflows has run on GitHub.

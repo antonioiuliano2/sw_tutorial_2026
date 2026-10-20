@@ -1,0 +1,221 @@
+\chapter{Muons through the detector}
+\label{ch:aegir}
+
+\chaptergoals{7 of 11 in Part~II.}
+{\cref{ch:geometry,ch:services}: \file{ship\_geometry.db} and the field maps
+in \file{work/}.}
+{simulate an artificial muon sample from the back of the muon shield through
+the detectors, choose the sensitive volumes, read the validation histograms,
+and reproduce a run exactly.}
+
+\section{An artificial muon sample}
+
+The 1000 protons of \cref{ch:production} send only a handful of muons
+through the plane behind the hadron absorber, too few to see what the
+detectors make of them. In SHiP's own studies, stage~2 replays the plane
+particles of a production of many millions of protons through the muon shield
+and the detector. That is the same job as the one below with a different
+source, and you can try it on your own stage-1 file at the end of this chapter
+(\cref{ex:ownreplay}); here we start from an \emph{artificial} sample instead.
+
+\file{code/workflows/muon\_gun.jsonnet} fires 100 muons, one per event, from
+the beam axis at the back of the muon shield, $z=27$\,m, at most 20\,mrad
+from the beam direction, towards the decay volume and the detectors behind
+it. Their momenta are flat between 10 and 100\,GeV and they all have the same
+charge, so the sample shows what the detectors see of a muon, not how many
+muons SHiP will see. With respect to stage~1, two more things change:
+\begin{itemize}
+  \item there is no scoring plane;
+  \item the detectors are sensitive, and the field maps of the muon shield and
+        the spectrometer magnet are switched on (\cref{sec:fieldservice}).
+\end{itemize}
+
+\codefile[linerange={29-134},basicstyle=\ttfamily\footnotesize]{jsonnet}{code/workflows/muon_gun.jsonnet}
+
+\texttt{particle\_gun\_source} writes the muon into \texttt{mc\_particles},
+as \texttt{fixed\_target\_source} did for the products of a proton collision;
+Geant4 gives it \field{track\_id}~1 and \field{parent\_id}~0, which is how the
+analysis of \cref{ch:analysis} finds it.
+
+\section{Sensitive volumes}
+\label{sec:sensitive}
+
+In the default \emph{scoring} mode, Geant4 creates a \texttt{SimHit} for every
+step that deposits energy inside a \emph{sensitive} volume. \pkg{aegir} makes
+a logical volume sensitive when its name \emph{contains} one of the patterns
+in \texttt{sensitive\_volumes}, and gives its hits the \field{detector\_id} of
+that entry. An entry is either a bare pattern that \pkg{aegir} knows
+(\texttt{trackers}, \texttt{calorimeter}, \ldots), or
+\texttt{\{pattern: \ldots, detector: \ldots\}}, which names the detector
+itself; this workflow uses the second form throughout. Three consequences:
+
+\begin{enumerate}
+  \item The detector of a hit is what the entry says, whatever the order of
+        the list. \pkg{Shannon} later chooses the digitiser from
+        \field{detector\_id} (\cref{ch:datamodel}).
+  \item A pattern selects everything whose name contains it, including
+        passive volumes with similar names. Here the patterns name the active
+        volumes (tiles, straw gas, scintillator bars and fibres, timing bars),
+        except for the SBT, whose cells and the aluminium walls around them
+        share their prefix (\cref{ex:sensitive}).
+  \item Volumes that match no pattern produce no hits at all. If a detector is
+        missing from the list, it is silently invisible.
+\end{enumerate}
+
+\begin{pitfall}
+A pattern that \pkg{aegir} does not know, or an unknown detector name, stops
+the job while the configuration is read, before Geant4 starts: that is the
+error to expect if you mistype a detector. A mistyped \emph{pattern} in the
+\texttt{\{pattern, detector\}} form is not caught: it simply matches nothing.
+\end{pitfall}
+
+\begin{note}
+\pkg{aegir}'s own workflows for the SHiP geometry ship with
+\texttt{sensitive\_volumes: ['ScoringPlane']}, which matches nothing in the
+real detector: they are set up for flux studies at scoring planes. Stage~1 of
+this tutorial has an empty list for the same reason.
+\end{note}
+
+\section{Running it}
+
+\begin{exercise}{Simulate the muons}
+\label{ex:muongun}
+In the \pkg{aegir} environment, in \file{work/}, which must contain
+\file{ship\_geometry.db} and the two field maps:
+\begin{shell}
+cd "$SHIP_TUTORIAL/work"
+time phlex -j 4 -c <(jsonnet $CODE/workflows/muon_gun.jsonnet)
+\end{shell}
+Watch the log: the field maps are loaded and attached to their volumes, and
+Geant4 reports its progress every ten events.
+\end{exercise}
+
+\begin{checkpoint}
+Two new files, \file{muon\_gun.root} and \file{muon\_gun\_validation.root},
+and no error. \file{muon\_gun.root} has 100 entries, one per muon, with the
+six fields of \cref{sec:filelayout}.
+\end{checkpoint}
+
+\begin{exercise}{Read the validation histograms}
+Open \file{muon\_gun\_validation.root} with a ROOT browser, as in
+\cref{ch:production}.
+\begin{enumerate}
+  \item \texttt{h\_hit\_detector}: which detector IDs occur, and roughly in
+        which proportions? Is any of the five missing?
+  \item \texttt{h\_hit\_momentum}: compare with the momentum range of the
+        gun. Which particles make the hits below 10\,GeV?
+  \item \texttt{h\_mc\_multiplicity}: what does it show here, and why?
+\end{enumerate}
+\end{exercise}
+
+\begin{solution}
+\begin{enumerate}
+  \item All five occur. The straws (2) have the most hits: a muon crossing a
+        station leaves hits in many straw layers, and almost every muon at
+        20\,mrad crosses all four stations. The SBT (1) has many hits too, although
+        few muons reach it: a muon crossing its liquid scintillator travels
+        metres in it and leaves a hit at every step. In the dry run, 100 muons
+        gave about 4100 straw and 3400 SBT hits. The UBT (0), the timing
+        detector (4) and the calorimeter (3) see nearly every muon, with
+        fewer hits each.
+  \item The muons between 10 and 100\,GeV, less what they lost on the way;
+        the hits below 10\,GeV are from secondaries, mostly $\delta$-rays.
+  \item One entry at 1: the gun makes one particle per event.
+\end{enumerate}
+\end{solution}
+
+\section{Reproducibility and threads}
+
+\begin{exercise}{Same seed, same events}
+Rename your output, run the same command again, and compare selected per-event
+summaries with \file{sim\_summary.py}. Then run once more with \cmd{-j 1} and
+once with \cmd{--tla-code seed=1}.
+\begin{shell}
+mv muon_gun.root muon_gun_run1.root
+# ... the phlex command again ...
+python $CODE/analysis/sim_summary.py muon_gun_run1.root muon_gun.root
+\end{shell}
+Which summaries agree exactly, and which differ? Equal summaries are a
+smoke check, not proof that every field in the two files is identical.
+\end{exercise}
+
+\begin{solution}
+For a fixed software build and identical inputs, the expected result is
+matching event content with the same seed, also with \cmd{-j 1}: the gun and
+Geant4 are reseeded per event from (seed, event index), so neither the number
+of threads nor the order in which events finish changes any event. The
+entries can still be in a different order in the file, which is why
+\file{sim\_summary.py} compares per-event quantities keyed by
+\field{event\_number}. The run with \cmd{seed=1} has other muons, event by
+event, from the same distributions.
+\end{solution}
+
+\section{Going further}
+
+\begin{exercise}[colback=white]{Switch the field off}
+\label{ex:nofield}
+Simulate the same muons without any field:
+\begin{shell}
+phlex -j 4 -c <(jsonnet --tla-code field=false \
+    --tla-str output=muon_gun_nofield $CODE/workflows/muon_gun.jsonnet)
+\end{shell}
+Keep \file{muon\_gun\_nofield.root}: you will compare it with the field-on
+sample in the event display (\cref{ch:display}) and in the analysis
+(\cref{ch:analysis}).
+\end{exercise}
+
+\begin{exercise}[colback=white]{Optional: the other charge}
+\label{ex:mup}
+Simulate $\mu^+$ with the same seed:
+\begin{shell}
+phlex -j 4 -c <(jsonnet --tla-code pdg=-13 \
+    --tla-str output=muon_gun_mup $CODE/workflows/muon_gun.jsonnet)
+\end{shell}
+Each event starts with the same momentum and direction as in
+\file{muon\_gun.root}, only the charge differs. Where should the two samples
+differ, and where not?
+\end{exercise}
+
+\begin{solution}
+The gun draws from its own random stream, which does not depend on the
+particle type, so the muons start identically. Upstream of the spectrometer
+magnet the two samples agree up to Geant4's randomness; in the magnet the
+field bends the two charges to opposite sides, so the hits in straw
+stations 3 and 4 move in opposite directions in $x$ (the field is vertical).
+\end{solution}
+
+\begin{exercise}[colback=white]{Optional: replay your own stage 1}
+\label{ex:ownreplay}
+SHiP's real stage~2 replays the plane particles of a production through the
+shield and the detector: \file{code/workflows/ft\_replay.jsonnet} does that
+with the same detectors and field as \file{muon\_gun.jsonnet}, but with
+\texttt{file\_source} reading \texttt{plane\_particles}. Replay your
+\file{ft\_production.root}:
+\begin{shell}
+COUNT="$SHIP_TUTORIAL/aegir/scripts/count_entries.py"
+N=$(python $COUNT ft_production.root)   # entries of the stage-1 file
+phlex -j 4 -c <(jsonnet --tla-str infile=ft_production.root \
+    --tla-code events=$N $CODE/workflows/ft_replay.jsonnet)
+python $CODE/analysis/muon_background.py ft_replay.root --pot $POT
+\end{shell}
+What reaches the detectors from your 1000 protons? How many protons would
+you need for the 100 muons of the artificial sample?
+\end{exercise}
+
+\begin{solution}
+Few or no muons: the table of \cref{ex:planesummary} gives the muons per
+proton at the plane, and only a fraction of them gets past the shield. In
+the dry run, the 3 muons at the plane were all swept away: none reached the
+UBT.
+Dividing 100 by that rate gives the protons needed at the plane alone; for 100
+muons \emph{in the detectors}, divide by the fraction that the shield lets
+through as well. That is why SHiP produces stage~1 once, in large batches,
+and replays it many times.
+\end{solution}
+
+\begin{pitfall}
+The driver creates exactly \texttt{events} events whether or not the input has
+that many entries. Past the end of the file, \texttt{file\_source} publishes
+\emph{empty} events. Always ask for at most as many events as the input holds,
+which is what \file{count\_entries.py} tells you.
+\end{pitfall}
